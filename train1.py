@@ -27,12 +27,12 @@ csv_logger = CSVLogger('resnet18_cifar10.csv')
 
 batch_size = 32
 nb_classes = 23
-nb_epoch = 200
+nb_epoch = 50
 data_augmentation = False
 
 
 # input image dimensions
-img_rows, img_cols = 224, 224
+img_rows, img_cols = 100, 100
 # The CIFAR10 images are RGB.
 img_channels = 3
 
@@ -93,7 +93,8 @@ img_channels = 3
 
 from keras.preprocessing.image import ImageDataGenerator
 train_datagen = ImageDataGenerator(rescale= 1./255, validation_split = 0.2)
-train_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical')
+train_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='training')
+valid_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='validation')
 
 # # Convert class vectors to binary class matrices.
 # Y_train = np_utils.to_categorical(y_train, nb_classes)
@@ -154,6 +155,6 @@ tbCallBack = TensorBoard(log_dir='./Graph')
 model.fit_generator(train_generator,
                     # steps_per_epoch=X_train.shape[0] // batch_size,
                     steps_per_epoch = train_generator.samples // train_generator.batch_size,
-                    # validation_data=(X_test, Y_test),
-                    epochs=nb_epoch, verbose=0, max_queue_size=100,
+                    validation_data = valid_generator,
+                    epochs=nb_epoch, verbose=1, max_queue_size=100,
                     callbacks=[lr_reducer, early_stopper, csv_logger, tbCallBack])
