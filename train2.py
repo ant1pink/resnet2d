@@ -21,15 +21,21 @@ from sklearn import preprocessing
 from keras.applications.resnet50 import preprocess_input, ResNet50
 from keras.layers import Dense, Flatten
 from keras.models import Model
+from keras.callbacks import ModelCheckpoint
+import tensorflow as tf
+#from tf.keras.utils import multi_gpu_model
 
 
 
-
+#with tf.device('/cpu:0'):
 base_model = ResNet50(include_top = False, weights='imagenet', input_shape = (224,224,3))
 x = Flatten()(base_model.output)
 x = Dense(23, activation = 'softmax')(x)
-model = Model(base_model.input, x)
-model.compile(loss='categorical_crossentropy',
+parallel_model = Model(base_model.input, x)
+
+#parallel_model = multi_gpu_model(model, gpus=2)
+
+parallel_model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
 
@@ -40,7 +46,7 @@ model.compile(loss='categorical_crossentropy',
 
 batch_size = 16
 nb_classes = 23
-nb_epoch = 50
+nb_epoch = 20
 data_augmentation = False
 
 
@@ -105,9 +111,9 @@ img_channels = 3
 
 
 from keras.preprocessing.image import ImageDataGenerator
-train_datagen = ImageDataGenerator(samplewise_std_normalization = True, rescale= 1./255, validation_split = 0.2)
-train_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=batch_size, class_mode = 'categorical', subset ='training')
-valid_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=batch_size, class_mode = 'categorical', subset ='validation')
+train_datagen = ImageDataGenerator(samplewise_center = True, samplewise_std_normalization = True, validation_split = 0.2)
+train_generator = train_datagen.flow_from_directory('img_new/', target_size= (img_rows, img_cols), batch_size=batch_size, class_mode = 'categorical', subset ='training')
+valid_generator = train_datagen.flow_from_directory('img_new/', target_size= (img_rows, img_cols), batch_size=batch_size, class_mode = 'categorical', subset ='validation')
 
 # # Convert class vectors to binary class matrices.
 # Y_train = np_utils.to_categorical(y_train, nb_classes)
@@ -122,11 +128,6 @@ valid_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/
 # X_test -= mean_image
 # X_train /= 128.
 # X_test /= 128.
-
-model = resnet.ResnetBuilder.build_resnet_18((img_channels, img_rows, img_cols), nb_classes)
-model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
 
 tbCallBack = TensorBoard(log_dir='./Graph')
 
@@ -164,10 +165,10 @@ tbCallBack = TensorBoard(log_dir='./Graph')
 #                         validation_data=(X_test, Y_test),
 #                         epochs=nb_epoch, verbose=1, max_q_size=100,
 #                         callbacks=[lr_reducer, early_stopper, csv_logger, tbCallBack])
-
-model.fit_generator(train_generator,
+checkpointer = ModelCheckpoint(filepath='./weights/weights.hdf5', verbose=1, save_best_only=True)
+parallel_model.fit_generator(train_generator,
                     # steps_per_epoch=X_train.shape[0] // batch_size,
                     steps_per_epoch = train_generator.samples // train_generator.batch_size,
                     validation_data = valid_generator,
                     epochs=nb_epoch, verbose=1, max_queue_size=100,
-                    callbacks=[tbCallBack])
+                    callbacks=[tbCallBack, checkpointer])

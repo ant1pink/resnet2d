@@ -20,19 +20,20 @@ import resnet
 import cv2
 from sklearn import preprocessing
 from keras.applications.resnet50 import preprocess_input
+from keras.callbacks import ModelCheckpoint
 
-lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1), cooldown=0, patience=5, min_lr=0.5e-6)
+#lr_reducer = ReduceLROnPlateau(monitor = 'val_loss' factor=np.sqrt(0.3), cooldown=0, patience=5, min_lr=0.5e-6)
 early_stopper = EarlyStopping(min_delta=0.001, patience=10)
 csv_logger = CSVLogger('resnet18_cifar10.csv')
 
-batch_size = 32
+batch_size = 16
 nb_classes = 23
-nb_epoch = 50
+nb_epoch = 150
 data_augmentation = False
 
 
 # input image dimensions
-img_rows, img_cols = 100, 100
+img_rows, img_cols = 224, 224
 # The CIFAR10 images are RGB.
 img_channels = 3
 
@@ -92,9 +93,9 @@ img_channels = 3
 
 
 from keras.preprocessing.image import ImageDataGenerator
-train_datagen = ImageDataGenerator(rescale= 1./255, validation_split = 0.2)
-train_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='training')
-valid_generator = train_datagen.flow_from_directory('C:/Users/ruili2.LL/Desktop/img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='validation')
+train_datagen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization = True, validation_split = 0.2)
+train_generator = train_datagen.flow_from_directory('img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='training')
+valid_generator = train_datagen.flow_from_directory('img_new/', target_size= (img_rows, img_cols), batch_size=32, class_mode = 'categorical', subset ='validation')
 
 # # Convert class vectors to binary class matrices.
 # Y_train = np_utils.to_categorical(y_train, nb_classes)
@@ -151,10 +152,10 @@ tbCallBack = TensorBoard(log_dir='./Graph')
 #                         validation_data=(X_test, Y_test),
 #                         epochs=nb_epoch, verbose=1, max_q_size=100,
 #                         callbacks=[lr_reducer, early_stopper, csv_logger, tbCallBack])
-
+checkpointer = ModelCheckpoint(filepath='./weights/resnet18_weights.hdf5', verbose=1, save_best_only=True)
 model.fit_generator(train_generator,
                     # steps_per_epoch=X_train.shape[0] // batch_size,
                     steps_per_epoch = train_generator.samples // train_generator.batch_size,
                     validation_data = valid_generator,
-                    epochs=nb_epoch, verbose=1, max_queue_size=100,
-                    callbacks=[lr_reducer, early_stopper, csv_logger, tbCallBack])
+                    epochs=nb_epoch, verbose=2, max_queue_size=100,
+                    callbacks=[checkpointer, tbCallBack])
